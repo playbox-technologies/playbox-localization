@@ -1,0 +1,15 @@
+{
+  "name": "playbox.localization",
+  "displayName": "Playbox localization",
+  "author": "playbox",
+  "version": "0.0.1",
+  "description": "localization",
+  "keywords": [
+    "utility",
+	"localization"
+  ],
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+    
+  }
+}
