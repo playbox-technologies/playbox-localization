@@ -1,0 +1,8 @@
+{
+  "name": "Playbox.Localization.Runtime",
+  "rootNamespace": "Playbox.Localization",
+  "references": [],
+  "includePlatforms": [],
+  "autoReferenced": true,
+  "allowUnsafeCode": false
+}
