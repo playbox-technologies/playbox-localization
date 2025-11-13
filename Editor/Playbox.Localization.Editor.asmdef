@@ -1,0 +1,12 @@
+{
+  "name": "Playbox.Localization.Editor",
+  "rootNamespace": "Playbox.Localization",
+  "references": [
+    "Playbox.Localization.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true,
+  "allowUnsafeCode": false
+}
