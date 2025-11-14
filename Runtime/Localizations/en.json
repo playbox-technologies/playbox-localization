@@ -1,0 +1,20 @@
+{
+  "_items": [
+    {
+      "_key": "bottom_message_robbery",
+      "_value": "You stole <color=#A6625E>{1}</color> from {0}"
+    },
+    {
+      "_key": "bottom_message_attack",
+      "_value": "You've attacked {0}'s village and won <color=#A6625E>{1}</color>"
+    },
+    {
+      "_key": "shop_spins",
+      "_value": "Dice"
+    },
+    {
+      "_key": "shop_coins",
+      "_value": "Coins"
+    }
+  ]
+}
