@@ -9,7 +9,7 @@ namespace Playbox.Localization
     {
         private static Dictionary<string, string> _entries = new();
 
-        private static string _currentLanguage = "en";
+        private static string _currentLanguage = "English";
 
         [System.Serializable]
         private class LocalizationItem
