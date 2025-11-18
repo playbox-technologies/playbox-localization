@@ -16,7 +16,7 @@ namespace Playbox.Localization
 
         private string _localizationFolder = Path.Combine(Application.dataPath, "LocalizationStorage");
 
-        [MenuItem("Tools/Localization/Update from Google Sheets")]
+        [MenuItem("Tools/Localization/LocalizationLoader")]
         public static void ShowWindow()
         {
             GetWindow<LocalizationUpdaterWindow>("Localization Update");
@@ -109,6 +109,14 @@ namespace Playbox.Localization
 
             AssetDatabase.Refresh();
             Debug.Log("Localization updated successfully.");
+
+            var locWindow = Resources.FindObjectsOfTypeAll<LocalizationEditorWindow>().FirstOrDefault();
+            if (locWindow != null)
+            {
+                locWindow.LoadLanguage();
+                locWindow.UpdateLanguages();
+                locWindow.Repaint();
+            }
         }
 
         [Serializable]
