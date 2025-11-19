@@ -16,7 +16,7 @@ namespace Playbox.Localization
 
         private string _localizationFolder = Path.Combine(Application.dataPath, "LocalizationStorage");
 
-        [MenuItem("Tools/Localization/LocalizationLoader")]
+        [MenuItem("Playbox/Localization/LocalizationLoader")]
         public static void ShowWindow()
         {
             GetWindow<LocalizationUpdaterWindow>("Localization Update");
