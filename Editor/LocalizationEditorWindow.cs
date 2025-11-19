@@ -10,10 +10,13 @@ namespace Playbox.Localization
 {
     public class LocalizationEditorWindow : EditorWindow
     {
-        private string selectedLanguage = "English";
-        private string[] languages = new string[] {};
-        private LocalizationWrapper data;
-        private Vector2 scrollPos;
+        private string _selectedLanguage = "English";
+        private string[] _languages = new string[] {};
+        private LocalizationWrapper _data;
+        private Vector2 _scrollPos;
+
+        private string _newKey = "";
+        private string _newValue = "";
 
         [MenuItem("Tools/Localization/Localization Editor")]
         public static void ShowWindow()
@@ -30,7 +33,7 @@ namespace Playbox.Localization
 
             var files = Directory.GetFiles(folderPath, "*.json");
 
-            languages = files
+            _languages = files
                 .Select(f => Path.GetFileNameWithoutExtension(f))
                 .ToArray();
         }
@@ -40,43 +43,86 @@ namespace Playbox.Localization
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Language:", GUILayout.Width(70));
 
-            int currentIndex = System.Array.IndexOf(languages, selectedLanguage);
-            int newIndex = EditorGUILayout.Popup(currentIndex, languages);
+            int currentIndex = System.Array.IndexOf(_languages, _selectedLanguage);
+            int newIndex = EditorGUILayout.Popup(currentIndex, _languages);
 
             if (newIndex != currentIndex)
             {
-                selectedLanguage = languages[newIndex];
+                _selectedLanguage = _languages[newIndex];
                 LoadLanguage();
             }
 
             if (GUILayout.Button("Save"))
-                SaveLanguage(selectedLanguage);
+                SaveLanguage(_selectedLanguage);
 
             EditorGUILayout.EndHorizontal();
 
-            if (data != null && data._items != null)
+            if (_data != null && _data._items != null)
             {
                 EditorGUILayout.Space();
-                scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
+                _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
 
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Add New Word", EditorStyles.boldLabel);
+
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Key", GUILayout.Width(50));
+                _newKey = EditorGUILayout.TextField(_newKey, GUILayout.ExpandWidth(true));
+                EditorGUILayout.EndHorizontal();
+
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Value", GUILayout.Width(50));
+                _newValue = EditorGUILayout.TextField(_newValue, GUILayout.ExpandWidth(true));
+                EditorGUILayout.EndHorizontal();
+
+                if (GUILayout.Button("Add"))
+                {
+                    AddNewWord();
+                }
+
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Localization Data", EditorStyles.boldLabel);
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField("Key", GUILayout.Width(250));
                 EditorGUILayout.LabelField("Value", GUILayout.Width(400));
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
-                foreach (var item in data._items)
+                foreach (var item in _data._items)
                 {
                     EditorGUILayout.BeginHorizontal();
 
                     EditorGUILayout.LabelField(item._key, GUILayout.Width(250));
-                    item._value = EditorGUILayout.TextField(item._value, GUILayout.Width(400));
+                    item._value = EditorGUILayout.TextField(item._value, GUILayout.ExpandWidth(true));
 
                     EditorGUILayout.EndHorizontal();
                 }
 
                 EditorGUILayout.EndScrollView();
             }
+        }
+
+
+        private void AddNewWord()
+        {
+            if (string.IsNullOrEmpty(_newKey))
+            {
+                Debug.LogWarning("Key cannot be empty!");
+                return;
+            }
+
+            if (_data._items.Any(x => x._key == _newKey))
+            {
+                Debug.LogWarning($"Key '{_newKey}' already exists!");
+                return;
+            }
+
+            _data._items.Add(new TranslationItem { _key = _newKey, _value = _newValue });
+
+            _newKey = "";
+            _newValue = "";
+
+            SaveLanguage(_selectedLanguage);
         }
 
         void OnEnable()
@@ -87,25 +133,25 @@ namespace Playbox.Localization
 
         public void LoadLanguage()
         {
-            string path = $"Assets/LocalizationStorage/{selectedLanguage}.json";
+            string path = $"Assets/LocalizationStorage/{_selectedLanguage}.json";
             if (File.Exists(path))
             {
                 string json = File.ReadAllText(path);
-                data = JsonConvert.DeserializeObject<LocalizationWrapper>(json);
+                _data = JsonConvert.DeserializeObject<LocalizationWrapper>(json);
             }
             else
             {
-                data = new LocalizationWrapper { _items = new List<TranslationItem>() };
+                _data = new LocalizationWrapper { _items = new List<TranslationItem>() };
                 Debug.LogWarning("JSON not found: " + path);
             }
         }
 
         void SaveLanguage(string language)
         {
-            if (data == null || data._items == null) return;
+            if (_data == null || _data._items == null) return;
 
             string path = $"Assets/LocalizationStorage/{language}.json";
-            string json = JsonConvert.SerializeObject(data, Formatting.Indented);
+            string json = JsonConvert.SerializeObject(_data, Formatting.Indented);
             File.WriteAllText(path, json);
             AssetDatabase.Refresh();
         }
