@@ -11,14 +11,13 @@ namespace Playbox.Localization
     public class LocalizationEditorWindow : EditorWindow
     {
         private string _selectedLanguage = "English";
-        private string[] _languages = new string[] {};
+        private string[] _languages = new string[] { };
         private LocalizationWrapper _data;
         private Vector2 _scrollPos;
 
         private string _newKey = "";
         private string _newValue = "";
         private string _searchQuery = "";
-
 
         [MenuItem("Tools/Localization/Localization Editor")]
         public static void ShowWindow()
@@ -42,10 +41,26 @@ namespace Playbox.Localization
 
         void OnGUI()
         {
+            DrawLanguageSelection();
+
+            if (_data == null || _data._items == null)
+                return;
+
+            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+
+            DrawAddNewWord();
+            DrawSearchField();
+            DrawLocalizationList();
+
+            EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawLanguageSelection()
+        {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Language:", GUILayout.Width(70));
 
-            int currentIndex = System.Array.IndexOf(_languages, _selectedLanguage);
+            int currentIndex = Array.IndexOf(_languages, _selectedLanguage);
             int newIndex = EditorGUILayout.Popup(currentIndex, _languages);
 
             if (newIndex != currentIndex)
@@ -58,64 +73,83 @@ namespace Playbox.Localization
                 SaveLanguage(_selectedLanguage);
 
             EditorGUILayout.EndHorizontal();
+        }
 
-            if (_data != null && _data._items != null)
+        private void DrawAddNewWord()
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Add New Word", EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Key", GUILayout.Width(50));
+            _newKey = EditorGUILayout.TextField(_newKey, GUILayout.ExpandWidth(true));
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Value", GUILayout.Width(50));
+            _newValue = EditorGUILayout.TextField(_newValue, GUILayout.ExpandWidth(true));
+            EditorGUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Add"))
             {
-                EditorGUILayout.Space();
-                _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
-
-                EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Add New Word", EditorStyles.boldLabel);
-
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField("Key", GUILayout.Width(50));
-                _newKey = EditorGUILayout.TextField(_newKey, GUILayout.ExpandWidth(true));
-                EditorGUILayout.EndHorizontal();
-
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField("Value", GUILayout.Width(50));
-                _newValue = EditorGUILayout.TextField(_newValue, GUILayout.ExpandWidth(true));
-                EditorGUILayout.EndHorizontal();
-
-                if (GUILayout.Button("Add"))
-                {
-                    AddNewWord();
-                }
-
-
-                EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Search", EditorStyles.boldLabel);
-                _searchQuery = EditorGUILayout.TextField(_searchQuery, GUILayout.ExpandWidth(true));
-
-                EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Localization Data", EditorStyles.boldLabel);
-                EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField("Key", GUILayout.Width(250));
-                EditorGUILayout.LabelField("Value", GUILayout.Width(400));
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-
-                var filteredItems = _data._items
-                    .Where(x =>
-                        string.IsNullOrEmpty(_searchQuery) ||
-                        x._key.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        x._value.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0
-                    );
-
-                foreach (var item in filteredItems)
-                {
-                    EditorGUILayout.BeginHorizontal();
-
-                    EditorGUILayout.LabelField(item._key, GUILayout.Width(250));
-                    item._value = EditorGUILayout.TextField(item._value, GUILayout.ExpandWidth(true));
-
-                    EditorGUILayout.EndHorizontal();
-                }
-
-                EditorGUILayout.EndScrollView();
+                AddNewWord();
             }
         }
 
+        private void DrawSearchField()
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Search", EditorStyles.boldLabel);
+            _searchQuery = EditorGUILayout.TextField(_searchQuery, GUILayout.ExpandWidth(true));
+        }
+
+        private void DrawLocalizationList()
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Localization Data", EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Key", GUILayout.Width(250));
+            EditorGUILayout.LabelField("Value", GUILayout.Width(400));
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+
+            var filteredItems = _data._items
+                .Where(x =>
+                    string.IsNullOrEmpty(_searchQuery) ||
+                    x._key.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    x._value.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0
+                )
+                .ToList();
+
+            var itemsToDelete = new List<TranslationItem>();
+
+            foreach (var item in filteredItems)
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField(item._key, GUILayout.Width(250));
+                item._value = EditorGUILayout.TextField(item._value, GUILayout.ExpandWidth(true));
+
+                if (GUILayout.Button("Delete", GUILayout.Width(60)))
+                    itemsToDelete.Add(item);
+
+                EditorGUILayout.EndHorizontal();
+            }
+
+            foreach (var item in itemsToDelete)
+            {
+                if (EditorUtility.DisplayDialog(
+                    "Delete Localization Key",
+                    $"Are you sure you want to delete '{item._key}'?",
+                    "Yes", "No"))
+                {
+                    _data._items.Remove(item);
+                }
+            }
+
+            if (itemsToDelete.Count > 0)
+                SaveLanguage(_selectedLanguage);
+        }
 
         private void AddNewWord()
         {
@@ -170,14 +204,14 @@ namespace Playbox.Localization
             AssetDatabase.Refresh();
         }
 
-        [System.Serializable]
+        [Serializable]
         public class TranslationItem
         {
             public string _key;
             public string _value;
         }
 
-        [System.Serializable]
+        [Serializable]
         public class LocalizationWrapper
         {
             public List<TranslationItem> _items;
