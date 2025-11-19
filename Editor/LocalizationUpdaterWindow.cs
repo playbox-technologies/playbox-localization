@@ -12,7 +12,7 @@ namespace Playbox.Localization
     public class LocalizationUpdaterWindow : EditorWindow
     {
         private const string EditorPrefsKey = "LocalizationUpdater_CSVUrl";
-        private string _googleSheetCsvUrl;
+        private string _googleSheetUrl;
 
         private string _localizationFolder = Path.Combine(Application.dataPath, "LocalizationStorage");
 
@@ -24,20 +24,20 @@ namespace Playbox.Localization
 
         private void OnEnable()
         {
-            _googleSheetCsvUrl = EditorPrefs.GetString(EditorPrefsKey, "");
+            _googleSheetUrl = EditorPrefs.GetString(EditorPrefsKey, "");
         }
 
         private void OnGUI()
         {
             GUILayout.Space(10);
-            GUILayout.Label("Google Sheets CSV URL", EditorStyles.boldLabel);
+            GUILayout.Label("Google Sheets URL", EditorStyles.boldLabel);
 
-            string newUrl = EditorGUILayout.TextField("CSV URL", _googleSheetCsvUrl);
+            string newUrl = EditorGUILayout.TextField("Google Sheets URL", _googleSheetUrl);
 
-            if (newUrl != _googleSheetCsvUrl)
+            if (newUrl != _googleSheetUrl)
             {
-                _googleSheetCsvUrl = newUrl;
-                EditorPrefs.SetString(EditorPrefsKey, _googleSheetCsvUrl);
+                _googleSheetUrl = newUrl;
+                EditorPrefs.SetString(EditorPrefsKey, _googleSheetUrl);
             }
 
             bool hasData = !string.IsNullOrEmpty(newUrl);
@@ -57,7 +57,9 @@ namespace Playbox.Localization
             Directory.CreateDirectory(_localizationFolder);
             ClearLocalizationFolder();
 
-            string csvData = DownloadCsv(_googleSheetCsvUrl);
+            string csvUrl = ConvertToCsvExportUrl(_googleSheetUrl);
+
+            string csvData = DownloadCsv(csvUrl);
 
             if (string.IsNullOrEmpty(csvData))
             {
@@ -119,6 +121,27 @@ namespace Playbox.Localization
             }
         }
 
+        private string ConvertToCsvExportUrl(string editUrl)
+        {
+            try
+            {
+                int startIndex = editUrl.IndexOf("/d/") + 3;
+                int endIndex = editUrl.IndexOf("/", startIndex);
+
+                if (endIndex == -1)
+                    endIndex = editUrl.Length;
+
+                string documentId = editUrl.Substring(startIndex, endIndex - startIndex);
+
+                return $"https://docs.google.com/spreadsheets/d/{documentId}/export?format=csv";
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to convert URL: {ex.Message}");
+                return editUrl;
+            }
+        }
+
         [Serializable]
         public class LocalizationFile
         {
@@ -151,19 +174,16 @@ namespace Playbox.Localization
         {
             using (WebClient client = new WebClient())
             {
+                try
                 {
-                    try
-                    {
-                        return client.DownloadString(url);
-                    }
-                    catch (System.Exception e)
-                    {
-                        Debug.LogError($"Failed downloading CSV: {e.Message}");
-                        return null;
-                    }
+                    return client.DownloadString(url);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"Failed downloading CSV: {e.Message}");
+                    return null;
                 }
             }
-
         }
     }
 }
