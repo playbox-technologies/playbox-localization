@@ -17,6 +17,8 @@ namespace Playbox.Localization
 
         private string _newKey = "";
         private string _newValue = "";
+        private string _searchQuery = "";
+
 
         [MenuItem("Tools/Localization/Localization Editor")]
         public static void ShowWindow()
@@ -80,6 +82,11 @@ namespace Playbox.Localization
                     AddNewWord();
                 }
 
+
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Search", EditorStyles.boldLabel);
+                _searchQuery = EditorGUILayout.TextField(_searchQuery, GUILayout.ExpandWidth(true));
+
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Localization Data", EditorStyles.boldLabel);
                 EditorGUILayout.BeginHorizontal();
@@ -88,7 +95,14 @@ namespace Playbox.Localization
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
-                foreach (var item in _data._items)
+                var filteredItems = _data._items
+                    .Where(x =>
+                        string.IsNullOrEmpty(_searchQuery) ||
+                        x._key.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        x._value.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0
+                    );
+
+                foreach (var item in filteredItems)
                 {
                     EditorGUILayout.BeginHorizontal();
 
