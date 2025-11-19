@@ -19,7 +19,7 @@ namespace Playbox.Localization
         private string _newValue = "";
         private string _searchQuery = "";
 
-        [MenuItem("Tools/Localization/Localization Editor")]
+        [MenuItem("Playbox/Localization/Localization Editor")]
         public static void ShowWindow()
         {
             GetWindow<LocalizationEditorWindow>("Localization Editor");
