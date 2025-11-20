@@ -34,9 +34,12 @@ namespace Playbox.Localization
 
             if (!File.Exists(path))
             {
-                Debug.LogError($"[LocalizationStorage] Localization file not found: {path}");
-                _entries = new();
-                return;
+                Debug.Log($"[LocalizationStorage] Localization file not found: {path}. Using English as default language.");
+                _currentLanguage = "English";
+
+                path = Path.Combine(Application.dataPath,
+                "LocalizationStorage",
+                $"{_currentLanguage}.json");
             }
 
             try
@@ -56,7 +59,7 @@ namespace Playbox.Localization
                     }
                 }
 
-                Debug.Log($"[LocalizationStorage] Loaded language  '{languageCode}', keys: {_entries.Count}");
+                Debug.Log($"[LocalizationStorage] Loaded language  '{_currentLanguage}', keys: {_entries.Count}");
             }
             catch (System.Exception ex)
             {
