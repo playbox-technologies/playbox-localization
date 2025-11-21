@@ -8,6 +8,10 @@ using UnityEngine;
 
 namespace Playbox.Localization
 {
+    /// <summary>
+    /// Custom Unity Editor Window for managing localization data.
+    /// Allows viewing, adding, editing, and deleting translation keys for different languages.
+    /// </summary>
     public class LocalizationEditorWindow : EditorWindow
     {
         private string _selectedLanguage = "English";
@@ -19,12 +23,18 @@ namespace Playbox.Localization
         private string _newValue = "";
         private string _searchQuery = "";
 
+        /// <summary>
+        /// Adds a menu item in Unity to open the Localization Editor window.
+        /// </summary>
         [MenuItem("Playbox/Localization/Localization Editor")]
         public static void ShowWindow()
         {
             GetWindow<LocalizationEditorWindow>("Localization Editor");
         }
 
+        /// <summary>
+        /// Updates the list of available languages by reading JSON files from LocalizationStorage folder.
+        /// </summary>
         public void UpdateLanguages()
         {
             string folderPath = Path.Combine(Application.dataPath, "LocalizationStorage");
@@ -39,6 +49,10 @@ namespace Playbox.Localization
                 .ToArray();
         }
 
+        /// <summary>
+        /// Draws the GUI for the Localization Editor window.
+        /// Handles scrolling, search, adding new words, and displaying localization items.
+        /// </summary>
         void OnGUI()
         {
             DrawLanguageSelection();
@@ -55,6 +69,10 @@ namespace Playbox.Localization
             EditorGUILayout.EndScrollView();
         }
 
+        /// <summary>
+        /// Draws the dropdown to select a language and the Save button.
+        /// Loads the selected language when changed.
+        /// </summary>
         private void DrawLanguageSelection()
         {
             EditorGUILayout.BeginHorizontal();
@@ -75,6 +93,9 @@ namespace Playbox.Localization
             EditorGUILayout.EndHorizontal();
         }
 
+        /// <summary>
+        /// Draws UI fields for adding a new translation key and value.
+        /// </summary>
         private void DrawAddNewWord()
         {
             EditorGUILayout.Space();
@@ -96,6 +117,9 @@ namespace Playbox.Localization
             }
         }
 
+        /// <summary>
+        /// Draws the search field to filter localization items by key or value.
+        /// </summary>
         private void DrawSearchField()
         {
             EditorGUILayout.Space();
@@ -103,6 +127,10 @@ namespace Playbox.Localization
             _searchQuery = EditorGUILayout.TextField(_searchQuery, GUILayout.ExpandWidth(true));
         }
 
+        /// <summary>
+        /// Displays all localization keys and values in a scrollable list.
+        /// Allows editing values and deleting keys.
+        /// </summary>
         private void DrawLocalizationList()
         {
             EditorGUILayout.Space();
@@ -151,6 +179,10 @@ namespace Playbox.Localization
                 SaveLanguage(_selectedLanguage);
         }
 
+        /// <summary>
+        /// Adds a new translation key and value to the current language.
+        /// Ensures the key is not empty and does not already exist.
+        /// </summary>
         private void AddNewWord()
         {
             if (string.IsNullOrEmpty(_newKey))
@@ -173,12 +205,19 @@ namespace Playbox.Localization
             SaveLanguage(_selectedLanguage);
         }
 
+        /// <summary>
+        /// Called when the Editor Window is enabled.
+        /// Updates the language list and loads the selected language.
+        /// </summary>
         void OnEnable()
         {
             UpdateLanguages();
             LoadLanguage();
         }
 
+        /// <summary>
+        /// Loads localization data from a JSON file for the currently selected language.
+        /// </summary>
         public void LoadLanguage()
         {
             string path = $"Assets/LocalizationStorage/{_selectedLanguage}.json";
@@ -194,6 +233,10 @@ namespace Playbox.Localization
             }
         }
 
+        /// <summary>
+        /// Saves the current localization data to a JSON file for the specified language.
+        /// </summary>
+        /// <param name="language">The language to save (e.g., "English").</param>
         void SaveLanguage(string language)
         {
             if (_data == null || _data._items == null) return;
@@ -204,6 +247,9 @@ namespace Playbox.Localization
             AssetDatabase.Refresh();
         }
 
+        /// <summary>
+        /// Represents a single translation key-value pair.
+        /// </summary>
         [Serializable]
         public class TranslationItem
         {
@@ -211,6 +257,9 @@ namespace Playbox.Localization
             public string _value;
         }
 
+        /// <summary>
+        /// Wrapper for all translation items in a language.
+        /// </summary>
         [Serializable]
         public class LocalizationWrapper
         {
