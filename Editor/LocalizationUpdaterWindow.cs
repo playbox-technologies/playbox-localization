@@ -9,13 +9,20 @@ using UnityEngine;
 
 namespace Playbox.Localization
 {
+    /// <summary>
+    /// Editor window for updating localization data from a Google Sheets URL.
+    /// Downloads the sheet data, converts it to JSON, and saves it in the LocalizationStorage folder.
+    /// </summary>
     public class LocalizationUpdaterWindow : EditorWindow
     {
-        private const string EditorPrefsKey = "LocalizationUpdater_CSVUrl";
-        private string _googleSheetUrl;
+        private const string EditorPrefsKey = "LocalizationUpdater_SheetUrl";
+        private string _sheetUrl;
 
         private string _localizationFolder = Path.Combine(Application.dataPath, "LocalizationStorage");
 
+        /// <summary>
+        /// Opens the localization updater window.
+        /// </summary>
         [MenuItem("Playbox/Localization/LocalizationLoader")]
         public static void ShowWindow()
         {
@@ -24,7 +31,7 @@ namespace Playbox.Localization
 
         private void OnEnable()
         {
-            _googleSheetUrl = EditorPrefs.GetString(EditorPrefsKey, "");
+            _sheetUrl = EditorPrefs.GetString(EditorPrefsKey, "");
         }
 
         private void OnGUI()
@@ -32,12 +39,12 @@ namespace Playbox.Localization
             GUILayout.Space(10);
             GUILayout.Label("Google Sheets URL", EditorStyles.boldLabel);
 
-            string newUrl = EditorGUILayout.TextField("Google Sheets URL", _googleSheetUrl);
+            string newUrl = EditorGUILayout.TextField("Google Sheets URL", _sheetUrl);
 
-            if (newUrl != _googleSheetUrl)
+            if (newUrl != _sheetUrl)
             {
-                _googleSheetUrl = newUrl;
-                EditorPrefs.SetString(EditorPrefsKey, _googleSheetUrl);
+                _sheetUrl = newUrl;
+                EditorPrefs.SetString(EditorPrefsKey, _sheetUrl);
             }
 
             bool hasData = !string.IsNullOrEmpty(newUrl);
@@ -52,26 +59,29 @@ namespace Playbox.Localization
             GUI.enabled = true;
         }
 
+        /// <summary>
+        /// Downloads the sheet data, converts it to JSON, and saves all languages to the LocalizationStorage folder.
+        /// </summary>
         private void UpdateLocalization()
         {
             Directory.CreateDirectory(_localizationFolder);
             ClearLocalizationFolder();
 
-            string csvUrl = ConvertToCsvExportUrl(_googleSheetUrl);
+            string exportUrl = ConvertToCsvExportUrl(_sheetUrl);
 
-            string csvData = DownloadCsv(csvUrl);
+            string data = DownloadData(exportUrl);
 
-            if (string.IsNullOrEmpty(csvData))
+            if (string.IsNullOrEmpty(data))
             {
-                Debug.LogError("CsvData is Empty");
+                Debug.LogError("Downloaded data is empty.");
                 return;
             }
 
-            string[] lines = csvData.Split(new[] { "\r\n", "\n" }, System.StringSplitOptions.RemoveEmptyEntries);
+            string[] lines = data.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
 
             if (lines.Length < 2)
             {
-                Debug.LogError("CSV has no data rows");
+                Debug.LogError("Sheet has no data rows.");
                 return;
             }
 
@@ -121,6 +131,9 @@ namespace Playbox.Localization
             }
         }
 
+        /// <summary>
+        /// Converts a Google Sheets edit URL to a CSV export URL.
+        /// </summary>
         private string ConvertToCsvExportUrl(string editUrl)
         {
             try
@@ -155,6 +168,9 @@ namespace Playbox.Localization
             public string _value;
         }
 
+        /// <summary>
+        /// Deletes all JSON files from the LocalizationStorage folder.
+        /// </summary>
         private void ClearLocalizationFolder()
         {
             if (!Directory.Exists(_localizationFolder))
@@ -170,7 +186,10 @@ namespace Playbox.Localization
             Debug.Log("Localization folder cleared.");
         }
 
-        private string DownloadCsv(string url)
+        /// <summary>
+        /// Downloads the data from the specified URL.
+        /// </summary>
+        private string DownloadData(string url)
         {
             using (WebClient client = new WebClient())
             {
@@ -178,9 +197,9 @@ namespace Playbox.Localization
                 {
                     return client.DownloadString(url);
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
-                    Debug.LogError($"Failed downloading CSV: {e.Message}");
+                    Debug.LogError($"Failed downloading data: {e.Message}");
                     return null;
                 }
             }
