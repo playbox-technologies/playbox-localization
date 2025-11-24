@@ -125,8 +125,7 @@ namespace Playbox.Localization
             var locWindow = Resources.FindObjectsOfTypeAll<LocalizationEditorWindow>().FirstOrDefault();
             if (locWindow != null)
             {
-                locWindow.LoadLanguage();
-                locWindow.UpdateLanguages();
+                locWindow.LoadAllLanguages();
                 locWindow.Repaint();
             }
         }
