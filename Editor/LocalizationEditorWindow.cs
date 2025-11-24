@@ -9,22 +9,22 @@ using UnityEngine;
 namespace Playbox.Localization
 {
     /// <summary>
-    /// Custom Unity Editor Window for managing localization data.
-    /// Allows viewing, adding, editing, and deleting translation keys for different languages.
+    /// Unity Editor window for localization management.
+    /// Allows adding, editing, searching, and saving translations for multiple languages.
     /// </summary>
     public class LocalizationEditorWindow : EditorWindow
     {
-        private string _selectedLanguage = "English";
-        private string[] _languages = new string[] { };
-        private LocalizationWrapper _data;
+        private Dictionary<string, LocalizationWrapper> _allLanguages = new Dictionary<string, LocalizationWrapper>();
+        private List<string> _languages = new List<string>();
         private Vector2 _scrollPos;
 
         private string _newKey = "";
-        private string _newValue = "";
         private string _searchQuery = "";
 
+        private const float ButtonHeight = 30f;
+
         /// <summary>
-        /// Adds a menu item in Unity to open the Localization Editor window.
+        /// Shows the Localization Editor window in Unity Editor.
         /// </summary>
         [MenuItem("Playbox/Localization/Localization Editor")]
         public static void ShowWindow()
@@ -33,232 +33,249 @@ namespace Playbox.Localization
         }
 
         /// <summary>
-        /// Updates the list of available languages by reading JSON files from LocalizationStorage folder.
+        /// Loads all language JSON files from the LocalizationStorage folder.
         /// </summary>
-        public void UpdateLanguages()
+        private void OnEnable()
+        {
+            LoadAllLanguages();
+        }
+
+        /// <summary>
+        /// Loads all language JSON files into a dictionary.
+        /// Each language is stored in a separate JSON file under Assets/LocalizationStorage.
+        /// </summary>
+        public void LoadAllLanguages()
         {
             string folderPath = Path.Combine(Application.dataPath, "LocalizationStorage");
-
             if (!Directory.Exists(folderPath))
-                return;
+                Directory.CreateDirectory(folderPath);
+
+            _allLanguages.Clear();
+            _languages.Clear();
 
             var files = Directory.GetFiles(folderPath, "*.json");
-
-            _languages = files
-                .Select(f => Path.GetFileNameWithoutExtension(f))
-                .ToArray();
+            foreach (var file in files)
+            {
+                string lang = Path.GetFileNameWithoutExtension(file);
+                string json = File.ReadAllText(file);
+                var wrapper = JsonConvert.DeserializeObject<LocalizationWrapper>(json) ?? new LocalizationWrapper { _items = new List<TranslationItem>() };
+                _allLanguages[lang] = wrapper;
+                _languages.Add(lang);
+            }
         }
 
         /// <summary>
-        /// Draws the GUI for the Localization Editor window.
-        /// Handles scrolling, search, adding new words, and displaying localization items.
+        /// Draws the main GUI of the Localization Editor window.
         /// </summary>
-        void OnGUI()
+        private void OnGUI()
         {
-            DrawLanguageSelection();
-
-            if (_data == null || _data._items == null)
-                return;
-
-            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
-
-            DrawAddNewWord();
+            DrawAddNewKey();
             DrawSearchField();
-            DrawLocalizationList();
+
+            EditorGUILayout.Space();
+
+            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos, GUILayout.ExpandHeight(true));
+
+            DrawLocalizationMatrix();
+            EditorGUILayout.Space();
+            DrawEmptyValuesHelpBox();
 
             EditorGUILayout.EndScrollView();
-        }
 
-        /// <summary>
-        /// Draws the dropdown to select a language and the Save button.
-        /// Loads the selected language when changed.
-        /// </summary>
-        private void DrawLanguageSelection()
-        {
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Language:", GUILayout.Width(70));
-
-            int currentIndex = Array.IndexOf(_languages, _selectedLanguage);
-            int newIndex = EditorGUILayout.Popup(currentIndex, _languages);
-
-            if (newIndex != currentIndex)
-            {
-                _selectedLanguage = _languages[newIndex];
-                LoadLanguage();
-            }
-
-            if (GUILayout.Button("Save"))
-                SaveLanguage(_selectedLanguage);
-
-            EditorGUILayout.EndHorizontal();
-        }
-
-        /// <summary>
-        /// Draws UI fields for adding a new translation key and value.
-        /// </summary>
-        private void DrawAddNewWord()
-        {
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Add New Word", EditorStyles.boldLabel);
+
+            DrawSaveAndResetButtons();
+        }
+
+        /// <summary>
+        /// Draws the section to add a new translation key.
+        /// </summary>
+        private void DrawAddNewKey()
+        {
+            EditorGUILayout.LabelField("Add New Key", EditorStyles.boldLabel);
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Key", GUILayout.Width(50));
             _newKey = EditorGUILayout.TextField(_newKey, GUILayout.ExpandWidth(true));
             EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Value", GUILayout.Width(50));
-            _newValue = EditorGUILayout.TextField(_newValue, GUILayout.ExpandWidth(true));
-            EditorGUILayout.EndHorizontal();
-
-            bool hasKeyAndValue = !string.IsNullOrEmpty(_newKey) && !string.IsNullOrEmpty(_newValue);
-
-            GUI.enabled = hasKeyAndValue;
+            GUI.enabled = !string.IsNullOrEmpty(_newKey);
             if (GUILayout.Button("Add"))
             {
-                AddNewWord();
+                AddNewKeyToAllLanguages(_newKey);
+                _newKey = "";
             }
             GUI.enabled = true;
         }
 
         /// <summary>
-        /// Draws the search field to filter localization items by key or value.
+        /// Adds a new key to all loaded languages if it doesn't already exist.
         /// </summary>
-        private void DrawSearchField()
+        /// <param name="key">The translation key to add.</param>
+        private void AddNewKeyToAllLanguages(string key)
         {
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Search", EditorStyles.boldLabel);
-            _searchQuery = EditorGUILayout.TextField(_searchQuery, GUILayout.ExpandWidth(true));
+            foreach (var lang in _languages)
+            {
+                var wrapper = _allLanguages[lang];
+                if (!wrapper._items.Any(i => i._key == key))
+                    wrapper._items.Add(new TranslationItem { _key = key, _value = "" });
+            }
         }
 
         /// <summary>
-        /// Displays all localization keys and values in a scrollable list.
-        /// Allows editing values and deleting keys.
+        /// Draws the search input field for filtering translation keys.
         /// </summary>
-        private void DrawLocalizationList()
+        private void DrawSearchField()
         {
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Localization Data", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Search", EditorStyles.boldLabel);
+            _searchQuery = EditorGUILayout.TextField(_searchQuery);
+        }
+
+        /// <summary>
+        /// Draws the main localization matrix with all keys and translations.
+        /// </summary>
+        private void DrawLocalizationMatrix()
+        {
+            if (_languages.Count == 0) return;
 
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Key", GUILayout.Width(250));
-            EditorGUILayout.LabelField("Value", GUILayout.Width(400));
+            EditorGUILayout.LabelField("Key", GUILayout.Width(200));
+            foreach (var lang in _languages)
+                EditorGUILayout.LabelField(lang, GUILayout.Width(150));
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
-            var filteredItems = _data._items
-                .Where(x =>
-                    string.IsNullOrEmpty(_searchQuery) ||
-                    x._key.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    x._value.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0
-                )
-                .ToList();
+            var allKeys = _allLanguages.Values.SelectMany(w => w._items.Select(i => i._key)).Distinct().ToList();
+            if (!string.IsNullOrEmpty(_searchQuery))
+                allKeys = allKeys.Where(k => k.IndexOf(_searchQuery, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
 
-            var itemsToDelete = new List<TranslationItem>();
+            var keysToDelete = new List<string>();
 
-            foreach (var item in filteredItems)
+            foreach (var key in allKeys)
             {
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.LabelField(item._key, GUILayout.Width(250));
-                item._value = EditorGUILayout.TextField(item._value, GUILayout.ExpandWidth(true));
+                EditorGUILayout.LabelField(key, GUILayout.Width(200));
+
+                foreach (var lang in _languages)
+                {
+                    var wrapper = _allLanguages[lang];
+                    var item = wrapper._items.FirstOrDefault(x => x._key == key);
+                    string value = item?._value ?? "";
+
+                    string newValue = EditorGUILayout.TextField(value, GUILayout.Width(150));
+
+                    if (item != null)
+                        item._value = newValue;
+                    else if (!string.IsNullOrEmpty(newValue))
+                        wrapper._items.Add(new TranslationItem { _key = key, _value = newValue });
+                }
 
                 if (GUILayout.Button("Delete", GUILayout.Width(60)))
-                    itemsToDelete.Add(item);
+                    keysToDelete.Add(key);
 
                 EditorGUILayout.EndHorizontal();
             }
 
-            foreach (var item in itemsToDelete)
+            DeleteKeys(keysToDelete);
+        }
+
+        /// <summary>
+        /// Deletes selected keys from all languages after confirmation.
+        /// </summary>
+        /// <param name="keysToDelete">List of keys to delete.</param>
+        private void DeleteKeys(List<string> keysToDelete)
+        {
+            foreach (var key in keysToDelete)
             {
                 if (EditorUtility.DisplayDialog(
                     "Delete Localization Key",
-                    $"Are you sure you want to delete '{item._key}'?",
+                    $"Are you sure you want to delete '{key}' in all languages?",
                     "Yes", "No"))
                 {
-                    _data._items.Remove(item);
+                    foreach (var lang in _languages)
+                    {
+                        var wrapper = _allLanguages[lang];
+                        wrapper._items.RemoveAll(x => x._key == key);
+                    }
                 }
             }
-
-            if (itemsToDelete.Count > 0)
-                SaveLanguage(_selectedLanguage);
         }
 
         /// <summary>
-        /// Adds a new translation key and value to the current language.
-        /// Ensures the key is not empty and does not already exist.
+        /// Draws Save and Reset buttons with appropriate enabling/disabling logic.
         /// </summary>
-        private void AddNewWord()
+        private void DrawSaveAndResetButtons()
         {
-            if (string.IsNullOrEmpty(_newKey))
+            bool hasEmptyValue = _allLanguages.Values
+                .SelectMany(w => w._items)
+                .Any(i => string.IsNullOrWhiteSpace(i._value));
+
+            GUI.enabled = !hasEmptyValue;
+
+            if (GUILayout.Button("Save All", GUILayout.Height(ButtonHeight), GUILayout.ExpandWidth(true)))
             {
-                Debug.LogWarning("Key cannot be empty!");
-                return;
+                SaveAllLanguages();
+                EditorUtility.DisplayDialog("Saved", "All translations have been saved successfully.", "OK");
             }
 
-            if (string.IsNullOrEmpty(_newValue))
+            GUI.enabled = true;
+
+            if (GUILayout.Button("Reset", GUILayout.Height(ButtonHeight), GUILayout.ExpandWidth(true)))
             {
-                Debug.LogWarning("Value cannot be empty!");
-                return;
-            }
-
-            if (_data._items.Any(x => x._key == _newKey))
-            {
-                Debug.LogWarning($"Key '{_newKey}' already exists!");
-                return;
-            }
-
-            _data._items.Add(new TranslationItem { _key = _newKey, _value = _newValue });
-
-            _newKey = "";
-            _newValue = "";
-
-            SaveLanguage(_selectedLanguage);
-        }
-
-        /// <summary>
-        /// Called when the Editor Window is enabled.
-        /// Updates the language list and loads the selected language.
-        /// </summary>
-        void OnEnable()
-        {
-            UpdateLanguages();
-            LoadLanguage();
-        }
-
-        /// <summary>
-        /// Loads localization data from a JSON file for the currently selected language.
-        /// </summary>
-        public void LoadLanguage()
-        {
-            string path = $"Assets/LocalizationStorage/{_selectedLanguage}.json";
-            if (File.Exists(path))
-            {
-                string json = File.ReadAllText(path);
-                _data = JsonConvert.DeserializeObject<LocalizationWrapper>(json);
-            }
-            else
-            {
-                _data = new LocalizationWrapper { _items = new List<TranslationItem>() };
-                Debug.LogWarning("JSON not found: " + path);
+                if (EditorUtility.DisplayDialog("Reset", "Do you want to discard all changes and reload from JSON?", "Yes", "No"))
+                {
+                    LoadAllLanguages();
+                    GUI.FocusControl(null);
+                }
             }
         }
 
         /// <summary>
-        /// Saves the current localization data to a JSON file for the specified language.
+        /// Displays a HelpBox with a list of keys that have empty translations.
         /// </summary>
-        /// <param name="language">The language to save (e.g., "English").</param>
-        void SaveLanguage(string language)
+        private void DrawEmptyValuesHelpBox()
         {
-            if (_data == null || _data._items == null) return;
+            var emptyTranslations = new List<string>();
+            foreach (var lang in _allLanguages.Keys)
+            {
+                var wrapper = _allLanguages[lang];
+                var emptyKeys = wrapper._items
+                    .Where(i => string.IsNullOrWhiteSpace(i._value))
+                    .Select(i => i._key)
+                    .ToList();
 
-            string path = $"Assets/LocalizationStorage/{language}.json";
-            string json = JsonConvert.SerializeObject(_data, Formatting.Indented);
-            File.WriteAllText(path, json);
+                if (emptyKeys.Count > 0)
+                    emptyTranslations.Add($"{lang}: {string.Join(", ", emptyKeys)}");
+            }
+
+            if (emptyTranslations.Count > 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "The following keys are empty:\n" + string.Join("\n", emptyTranslations),
+                    MessageType.Warning
+                );
+            }
+        }
+
+        /// <summary>
+        /// Saves all language translations to their respective JSON files.
+        /// </summary>
+        private void SaveAllLanguages()
+        {
+            string folderPath = Path.Combine(Application.dataPath, "LocalizationStorage");
+
+            foreach (var kvp in _allLanguages)
+            {
+                string path = Path.Combine(folderPath, kvp.Key + ".json");
+                string json = JsonConvert.SerializeObject(kvp.Value, Formatting.Indented);
+                File.WriteAllText(path, json);
+            }
+
             AssetDatabase.Refresh();
         }
 
         /// <summary>
-        /// Represents a single translation key-value pair.
+        /// Represents a single translation item with key and value.
         /// </summary>
         [Serializable]
         public class TranslationItem
@@ -268,7 +285,7 @@ namespace Playbox.Localization
         }
 
         /// <summary>
-        /// Wrapper for all translation items in a language.
+        /// Wrapper for a list of translation items, representing a single language.
         /// </summary>
         [Serializable]
         public class LocalizationWrapper
