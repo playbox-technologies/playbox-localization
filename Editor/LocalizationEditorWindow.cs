@@ -111,10 +111,14 @@ namespace Playbox.Localization
             _newValue = EditorGUILayout.TextField(_newValue, GUILayout.ExpandWidth(true));
             EditorGUILayout.EndHorizontal();
 
+            bool hasKeyAndValue = !string.IsNullOrEmpty(_newKey) && !string.IsNullOrEmpty(_newValue);
+
+            GUI.enabled = hasKeyAndValue;
             if (GUILayout.Button("Add"))
             {
                 AddNewWord();
             }
+            GUI.enabled = true;
         }
 
         /// <summary>
@@ -188,6 +192,12 @@ namespace Playbox.Localization
             if (string.IsNullOrEmpty(_newKey))
             {
                 Debug.LogWarning("Key cannot be empty!");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_newValue))
+            {
+                Debug.LogWarning("Value cannot be empty!");
                 return;
             }
 
